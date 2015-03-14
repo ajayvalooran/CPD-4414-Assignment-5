@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.json.Json;
+import javax.json.JsonObject;
 import javax.json.stream.JsonParser;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -25,6 +26,7 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Response;
 import org.jboss.logging.Param;
 
 /*
@@ -46,13 +48,13 @@ public class products {
         String result = getResults("SELECT * FROM PRODUCT");
         return result;
     }
-    
+
     @GET
     @Path("{id}")
     @Produces("application/json")
     public String doGet(@PathParam("id") String id) {
 
-        String result = getResults("SELECT * FROM PRODUCT where product_id = ?",id);
+        String result = getResults("SELECT * FROM PRODUCT where product_id = ?", id);
         return result;
     }
 
@@ -64,41 +66,23 @@ public class products {
      */
     @POST
     @Consumes("application/json")
-    public void doPost(String str) {
-        JsonParser parser = Json.createParser(new StringReader(str));
-        Map<String, String> map = new HashMap<>();
-        String name = "", value;
-       
-        while (parser.hasNext()) {
-            JsonParser.Event evt = parser.next();
-            switch (evt) {
-                case KEY_NAME:
-                    name = parser.getString();
-                    break;
-                case VALUE_STRING:
-                    
-                    value = parser.getString();
-                    map.put(name, value);
-                    break;
-                case VALUE_NUMBER:
-                    value = Integer.toString(parser.getInt());
-                    map.put(name, value);
-                    break;
-                    
-            }
-            
-        }
-        System.out.println(map);
-        
-            String n = map.get("name");
-            String d = map.get("description");
-            String q = map.get("quantity");
-            
+    public Response doPost(JsonObject obj) {
 
-        
-        doUpdate("INSERT INTO PRODUCT ( product_name, product_description, quantity) VALUES ( ?, ?, ?)", n, d, q);
+        String id = obj.getString("product_id");
+        String name = obj.getString("product_name");
+        String desc = obj.getString("product_description");
+        String qty = obj.getString("quantity");
+
+        int ins = doUpdate("INSERT INTO PRODUCT ( product_id, product_name, product_description, quantity) VALUES (?, ?, ?, ?)", id, name, desc, qty);
+
+        if (ins <= 0) {
+            return Response.status(500).build();
+        } else {
+            return Response.ok("http://localhost:8080/Assignment4/webresources/products/" + id).build();
+        }
+
     }
-    
+
     @PUT
     @Path("{id}")
     @Consumes("application/json")
@@ -106,7 +90,7 @@ public class products {
         JsonParser parser = Json.createParser(new StringReader(str));
         Map<String, String> map = new HashMap<>();
         String name = "", value;
-       
+
         while (parser.hasNext()) {
             JsonParser.Event evt = parser.next();
             switch (evt) {
@@ -120,28 +104,22 @@ public class products {
             }
         }
         System.out.println(map);
-        
-            
-            String n = map.get("name");
-            String d = map.get("description");
-            String q = map.get("quantity");
 
-                doUpdate("UPDATE PRODUCT SET product_id = ?, product_name = ?, product_description = ?, quantity = ? WHERE PRODUCT_ID = ?", id, n,d,q, id);
-           
+        String n = map.get("name");
+        String d = map.get("description");
+        String q = map.get("quantity");
+
+        doUpdate("UPDATE PRODUCT SET product_id = ?, product_name = ?, product_description = ?, quantity = ? WHERE PRODUCT_ID = ?", id, n, d, q, id);
+
     }
-    
+
     @DELETE
     @Path("{id}")
     public void doDelete(@PathParam("id") String id, String str) {
-       
-       
-        
 
-                doUpdate("DELETE FROM PRODUCT WHERE product_id = ?", id);
-            
+        doUpdate("DELETE FROM PRODUCT WHERE product_id = ?", id);
+
     }
-    
-    
 
     private String getResults(String query, String... params) {
         StringBuilder sb = new StringBuilder();
@@ -153,17 +131,15 @@ public class products {
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
                 sb.append(String.format("%s\t%s\t%s\t%s\n", rs.getInt("product_id"), rs.getString("product_name"), rs.getString("product_description"), rs.getInt("quantity")));
-            
 
-}
+            }
         } catch (SQLException ex) {
-            Logger.getLogger(products.class  
-
-.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(products.class
+                    .getName()).log(Level.SEVERE, null, ex);
         }
         return sb.toString();
     }
-    
+
     private int doUpdate(String query, String... params) {
         int numChanges = 0;
         try (Connection conn = credentials.getConnection()) {
