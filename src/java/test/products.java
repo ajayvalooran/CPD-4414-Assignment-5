@@ -5,6 +5,7 @@ import static java.awt.Event.DELETE;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -16,6 +17,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.json.Json;
 import javax.json.JsonObject;
+import javax.json.stream.JsonGenerator;
+import javax.json.stream.JsonGeneratorFactory;
 import javax.json.stream.JsonParser;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -110,22 +113,39 @@ public class products {
     }
 
     private String getResults(String query, String... params) {
-        StringBuilder sb = new StringBuilder();
+
+        StringWriter str = new StringWriter();
+        JsonGeneratorFactory JSfac = Json.createGeneratorFactory(null);
+        JsonGenerator generator = JSfac.createGenerator(str);
+
         try (Connection conn = credentials.getConnection()) {
             PreparedStatement pstmt = conn.prepareStatement(query);
             for (int i = 1; i <= params.length; i++) {
                 pstmt.setString(i, params[i - 1]);
             }
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
-                sb.append(String.format("%s\t%s\t%s\t%s\n", rs.getInt("product_id"), rs.getString("product_name"), rs.getString("product_description"), rs.getInt("quantity")));
+            ResultSet res = pstmt.executeQuery();
+
+            generator.writeStartArray();
+
+            while (res.next()) {
+
+                generator.writeStartObject()
+                        .write("id", res.getInt("product_id"))
+                        .write("name", res.getString("product_name"))
+                        .write("desc", res.getString("product_description"))
+                        .write("qty", res.getInt("quantity"))
+                        .writeEnd();
 
             }
+
+            generator.writeEnd();
+            generator.close();
+            
         } catch (SQLException ex) {
             Logger.getLogger(products.class
                     .getName()).log(Level.SEVERE, null, ex);
         }
-        return sb.toString();
+        return str.toString();
     }
 
     private int doUpdate(String query, String... params) {
