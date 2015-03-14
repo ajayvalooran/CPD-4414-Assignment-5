@@ -161,5 +161,24 @@ public class products {
         }
         return numChanges;
     }
+    
+    private int getId(String query, String name, String desc) {
+        int id = 0;
+        try (Connection conn = credentials.getConnection()) {
+            PreparedStatement pstmt = conn.prepareStatement(query);
+            pstmt.setString(1, "name");
+            pstmt.setString(2, "desc");
+
+            ResultSet res = pstmt.executeQuery();
+
+            if (res.next()) {
+                id = res.getInt("product_id");
+            }
+
+        } catch (SQLException ex) {
+            Logger.getLogger(products.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return id;
+    }
 
 }
