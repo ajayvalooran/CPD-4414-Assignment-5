@@ -86,31 +86,19 @@ public class products {
     @PUT
     @Path("{id}")
     @Consumes("application/json")
-    public void doPut(@PathParam("id") String id, String str) {
-        JsonParser parser = Json.createParser(new StringReader(str));
-        Map<String, String> map = new HashMap<>();
-        String name = "", value;
+    public Response doPut(@PathParam("id") String id, JsonObject obj) {
+        
+        String name = obj.getString("name");
+        String desc = obj.getString("description");
+        String qty = obj.getString("quantity");
 
-        while (parser.hasNext()) {
-            JsonParser.Event evt = parser.next();
-            switch (evt) {
-                case KEY_NAME:
-                    name = parser.getString();
-                    break;
-                case VALUE_STRING:
-                    value = parser.getString();
-                    map.put(name, value);
-                    break;
-            }
+        int upd = doUpdate("UPDATE PRODUCT SET product_id = ?, product_name = ?, product_description = ?, quantity = ? WHERE product_id = ?", id, name, desc, qty, id);
+                     
+        if (upd <= 0) {
+            return Response.status(500).build();
+        } else {
+            return Response.ok("http://localhost:8080/Assignment4/webresources/products/" + id).build();
         }
-        System.out.println(map);
-
-        String n = map.get("name");
-        String d = map.get("description");
-        String q = map.get("quantity");
-
-        doUpdate("UPDATE PRODUCT SET product_id = ?, product_name = ?, product_description = ?, quantity = ? WHERE PRODUCT_ID = ?", id, n, d, q, id);
-
     }
 
     @DELETE
